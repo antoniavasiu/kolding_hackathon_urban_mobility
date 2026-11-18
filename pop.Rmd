@@ -1,0 +1,57 @@
+---
+title: "Kolding Population Segmentation"
+author: "Antonia Vasiu"
+date: "2026-05-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r load-and-clean}
+library(readxl)
+
+pop_data <- as.data.frame(read_excel("population.xlsx", skip = 2))
+names(pop_data)[1:3] <- c("Municipality", "Time_Period", "Age")
+
+pop_data <- pop_data[pop_data$Age != "Age, total", ]
+pop_data$Age <- as.numeric(gsub("[^0-9]", "", pop_data$Age))
+pop_data <- pop_data[, c(-1, -2)]
+```
+
+```{r cohort-segmentation}
+pop_data$Age_Group <- "65+ (Seniors)"
+pop_data$Age_Group[pop_data$Age <= 14] <- "0-14 (Children)"
+pop_data$Age_Group[pop_data$Age >= 15 & pop_data$Age <= 24] <- "15-24 (Youth/Students)"
+pop_data$Age_Group[pop_data$Age >= 25 & pop_data$Age <= 35] <- "25-35 (Young Professionals)"
+pop_data$Age_Group[pop_data$Age >= 36 & pop_data$Age <= 50] <- "36-50 (Established Families)"
+pop_data$Age_Group[pop_data$Age >= 51 & pop_data$Age <= 64] <- "51-64 (Mature Adults)"
+
+summary_table <- aggregate(cbind(Total, Men, Women) ~ Age_Group, data = pop_data, FUN = sum)
+summary_table$Percentage <- round((summary_table$Total / sum(summary_table$Total)) * 100, 2)
+print(summary_table)
+```
+
+```{r cohort-plot, fig.width=9, fig.height=5}
+par(mar = c(5, 14, 4, 2))
+
+bp <- barplot(summary_table$Total,
+              names.arg = summary_table$Age_Group,
+              main = "Kolding Population Segmentation for Axeltorv",
+              xlab = "Number of Citizens",
+              col = c("#aad2ec", "#a1cca5", "#ffdf91", "#fbc6a4", "#fcd1d1", "#f3b0c3"),
+              border = "white",
+              las = 1,
+              horiz = TRUE,
+              cex.names = 0.8,
+              xlim = c(0, max(summary_table$Total) * 1.15))
+
+text(x = summary_table$Total,
+     y = bp,
+     label = paste0(summary_table$Percentage, "%"),
+     pos = 4,
+     col = "black",
+     font = 2,
+     cex = 0.8)
+```
